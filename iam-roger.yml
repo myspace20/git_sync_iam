@@ -1,129 +1,76 @@
-AWSTemplateFormatVersion: "2010-09-09"
-Description: "IAM GitSync Stack for Lab - Creates groups and users with appropriate permissions"
-
-Parameters:
-  SecretName:
-    Description: "Name for the secret storing one-time passwords"
-    Type: String
-    Default: "gitsync-one-time-password"
-  
-  PasswordLength:
-    Description: "Length of the generated password"
-    Type: Number
-    Default: 12
-    MinValue: 8
-    MaxValue: 32
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CloudFormation template that creates two IAM user groups (S3 Read-Only v2 and EC2 Read-Only v2),
+  a temporary password in AWS Secrets Manager, and two IAM users with console access assigned to these groups.
 
 Resources:
-  # Secret for one-time passwords
-  OneTimePasswordSecret:
+  # --- One-Time Password stored in Secrets Manager ---
+  NewUserTempPasswordV2:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Ref SecretName
-      Description: "One-time password for IAM users in GitSync lab"
+      Description: "Temporary password for new IAM users (v2)"
+      Name: "iam-user-temp-password-v2"
       GenerateSecretString:
-        PasswordLength: !Ref PasswordLength
-        ExcludeCharacters: '"@/\'
+        SecretStringTemplate: "{}"
+        GenerateStringKey: "password"
+        PasswordLength: 20
+        IncludeSpace: false
         RequireEachIncludedType: true
-      Tags:
-        - Key: Purpose
-          Value: GitSyncLab
 
-  # S3 ReadOnly Group
-  S3ReadOnlyGroup:
+  # --- 2. S3 User Group with read access to S3 ---
+  S3UserGroupV2:
     Type: AWS::IAM::Group
     Properties:
-      GroupName: "S3ReadOnlyGroup"
-      Tags:
-        - Key: Purpose
-          Value: GitSyncLab
+      GroupName: "S3-ReadOnly-Group-V2"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 
-  S3ReadOnlyPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      ManagedPolicyName: "S3ReadOnlyAccess"
-      Description: "Provides read-only access to S3 services"
-      Groups:
-        - !Ref S3ReadOnlyGroup
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "s3:ListAllMyBuckets"
-              - "s3:GetBucketLocation"
-              - "s3:ListBucket"
-            Resource: "*"
-          - Effect: Allow
-            Action:
-              - "s3:GetObject"
-            Resource: "arn:aws:s3:::*/*"
-
-  # EC2 ReadOnly Group
-  EC2ReadOnlyGroup:
+  # --- 3. EC2 Group with read access to EC2 ---
+  EC2UserGroupV2:
     Type: AWS::IAM::Group
     Properties:
-      GroupName: "EC2ReadOnlyGroup"
-      Tags:
-        - Key: Purpose
-          Value: GitSyncLab
+      GroupName: "EC2-ReadOnly-Group-V2"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
 
-  EC2ReadOnlyPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      ManagedPolicyName: "EC2ReadOnlyAccess"
-      Description: "Provides read-only access to EC2 services"
-      Groups:
-        - !Ref EC2ReadOnlyGroup
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "ec2:Describe*"
-              - "ec2:Get*"
-            Resource: "*"
-
-  # IAM Users
-  S3User:
+  # --- 4. IAM User for S3 Access ---
+  S3UserV2:
     Type: AWS::IAM::User
     Properties:
-      UserName: "s3-user"
-      Groups:
-        - !Ref S3ReadOnlyGroup
+      UserName: "roger_s3_v2"
       LoginProfile:
-        Password: !Sub "{{resolve:secretsmanager:${OneTimePasswordSecret}::SecretString}}"
+        Password: !Sub "{{resolve:secretsmanager:iam-user-temp-password-v2:SecretString:password}}"
         PasswordResetRequired: true
-      Tags:
-        - Key: Purpose
-          Value: GitSyncLab
 
-  EC2User:
+  # --- 5. IAM User for EC2 Access ---
+  EC2UserV2:
     Type: AWS::IAM::User
     Properties:
-      UserName: "ec2-user"
-      Groups:
-        - !Ref EC2ReadOnlyGroup
+      UserName: "roger_ec2_v2"
       LoginProfile:
-        Password: !Sub "{{resolve:secretsmanager:${OneTimePasswordSecret}::SecretString}}"
+        Password: !Sub "{{resolve:secretsmanager:iam-user-temp-password-v2:SecretString:password}}"
         PasswordResetRequired: true
-      Tags:
-        - Key: Purpose
-          Value: GitSyncLab
+
+  # --- 6. Assign s3-user to the S3 Group ---
+  S3UserToGroupAdditionV2:
+    Type: AWS::IAM::UserToGroupAddition
+    Properties:
+      GroupName: !Ref S3UserGroupV2
+      Users:
+        - !Ref S3UserV2
+
+  # --- 7. Assign ec2-user to the EC2 Group ---
+  EC2UserToGroupAdditionV2:
+    Type: AWS::IAM::UserToGroupAddition
+    Properties:
+      GroupName: !Ref EC2UserGroupV2
+      Users:
+        - !Ref EC2UserV2
 
 Outputs:
-  OneTimePasswordSecretArn:
-    Description: "ARN of the one-time password secret"
-    Value: !Ref OneTimePasswordSecret
-  S3UserLoginLink:
-    Description: "Login link for S3 user"
-    Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
-  EC2UserLoginLink:
-    Description: "Login link for EC2 user"
-    Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
-  Instructions:
-    Description: "Instructions for lab completion"
-    Value: !Sub |
-      1. Retrieve the password from Secrets Manager: ${OneTimePasswordSecret}
-      2. Login using the provided links with usernames 's3-user' or 'ec2-user'
-      3. You will be prompted to change your password on first login
+  IAMLoginURLV2:
+    Description: "The URL for IAM users (v2) to log in to the AWS Console."
+    Value: !Sub "https://console.aws.amazon.com/console/home?region=${AWS::Region}"
+  SecretARNV2:
+    Description: "The ARN of the secret (v2) containing the temporary password."
+    Value: !Ref NewUserTempPasswordV2
