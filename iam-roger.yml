@@ -1,0 +1,7 @@
+template-file-path: iam-roger.yaml
+
+parameters: {}
+
+tags:
+  project: iam-stack
+  owner: roger_satsi
