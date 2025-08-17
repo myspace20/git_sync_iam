@@ -1,32 +1,70 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: >
-  Bootstrap IAM with two read-only groups and two console users (s3-user, ec2-user).
-  Initial password is auto-generated and stored in Secrets Manager; users must change on first login.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "IAM GitSync Stack to create groups and users"
 
 Resources:
-  OneTimePassword:
+  # Secret for the one-time password
+  OneTimePasswordSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: one-time-console-password
-      Description: Initial console password (JSON key "password") for users created by this stack
+      Name: "one-time-password"
       GenerateSecretString:
-        SecretStringTemplate: '{"note":"Initial console password for IAM users created by this stack"}'
-        GenerateStringKey: password
-        PasswordLength: 16
-        RequireEachIncludedType: true
-        ExcludeCharacters: '"@/\\'
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-
-  S3ReadOnlyGroup:
+        PasswordLength: 12
+        ExcludeCharacters: '"@/\'
+  
+  # S3 Group
+  S3Group:
     Type: AWS::IAM::Group
     Properties:
-      GroupName: s3-readonly-group
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-        - arn:aws:iam::aws:policy/IAMUserChangePassword  # let members change their own password
-
-  EC2ReadOnlyGroup:
+      GroupName: "S3ReadOnlyGroup"
+  
+  S3GroupPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: "S3ReadOnlyPolicy"
+      Groups:
+        - !Ref S3Group
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "s3:ListAllMyBuckets"
+            Resource: "*"
+  
+  # EC2 Group
+  EC2Group:
     Type: AWS::IAM::Group
     Properties:
-      GroupName: ec2-readonly-group
+      GroupName: "EC2ReadOnlyGroup"
+  
+  EC2GroupPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: "EC2ReadOnlyPolicy"
+      Groups:
+        - !Ref EC2Group
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "ec2:Describe*"
+            Resource: "*"
+  
+  # s3-user
+  S3User:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: "s3-user"
+      Groups: [!Ref S3Group]
+      LoginProfile:
+        Password: !Sub "{{resolve:secretsmanager:${OneTimePasswordSecret}::SecretString}}"
+        PasswordResetRequired: true
+  
+  # ec2-user
+  EC2User:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: "ec2-user"
+      Groups: [!Ref EC2Group]
+      LoginProfile:
+        Password: !Sub "{{resolve:secretsmanager:${OneTimePasswordSecret}::SecretString}}"
+        PasswordResetRequired: true
