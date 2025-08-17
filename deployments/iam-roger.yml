@@ -1,7 +1,32 @@
-template-file-path: iam-roger.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Bootstrap IAM with two read-only groups and two console users (s3-user, ec2-user).
+  Initial password is auto-generated and stored in Secrets Manager; users must change on first login.
 
-parameters: {}
+Resources:
+  OneTimePassword:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: one-time-console-password
+      Description: Initial console password (JSON key "password") for users created by this stack
+      GenerateSecretString:
+        SecretStringTemplate: '{"note":"Initial console password for IAM users created by this stack"}'
+        GenerateStringKey: password
+        PasswordLength: 16
+        RequireEachIncludedType: true
+        ExcludeCharacters: '"@/\\'
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
 
-tags:
-  project: iam-stack
-  owner: roger_satsi
+  S3ReadOnlyGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: s3-readonly-group
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/IAMUserChangePassword  # let members change their own password
+
+  EC2ReadOnlyGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: ec2-readonly-group
