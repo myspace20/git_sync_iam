@@ -68,3 +68,6 @@ Resources:
       LoginProfile:
         Password: !Sub "{{resolve:secretsmanager:${OneTimePasswordSecret}::SecretString}}"
         PasswordResetRequired: true
+template-file-path: iam-roger.yml
+parameters: {}
+tags: {}
