@@ -1,73 +1,129 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "IAM GitSync Stack to create groups and users"
+Description: "IAM GitSync Stack for Lab - Creates groups and users with appropriate permissions"
+
+Parameters:
+  SecretName:
+    Description: "Name for the secret storing one-time passwords"
+    Type: String
+    Default: "gitsync-one-time-password"
+  
+  PasswordLength:
+    Description: "Length of the generated password"
+    Type: Number
+    Default: 12
+    MinValue: 8
+    MaxValue: 32
 
 Resources:
-  # Secret for the one-time password
+  # Secret for one-time passwords
   OneTimePasswordSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: "one-time-password"
+      Name: !Ref SecretName
+      Description: "One-time password for IAM users in GitSync lab"
       GenerateSecretString:
-        PasswordLength: 12
+        PasswordLength: !Ref PasswordLength
         ExcludeCharacters: '"@/\'
-  
-  # S3 Group
-  S3Group:
+        RequireEachIncludedType: true
+      Tags:
+        - Key: Purpose
+          Value: GitSyncLab
+
+  # S3 ReadOnly Group
+  S3ReadOnlyGroup:
     Type: AWS::IAM::Group
     Properties:
       GroupName: "S3ReadOnlyGroup"
-  
-  S3GroupPolicy:
+      Tags:
+        - Key: Purpose
+          Value: GitSyncLab
+
+  S3ReadOnlyPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: "S3ReadOnlyPolicy"
+      ManagedPolicyName: "S3ReadOnlyAccess"
+      Description: "Provides read-only access to S3 services"
       Groups:
-        - !Ref S3Group
+        - !Ref S3ReadOnlyGroup
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
-            Action: "s3:ListAllMyBuckets"
+            Action:
+              - "s3:ListAllMyBuckets"
+              - "s3:GetBucketLocation"
+              - "s3:ListBucket"
             Resource: "*"
-  
-  # EC2 Group
-  EC2Group:
+          - Effect: Allow
+            Action:
+              - "s3:GetObject"
+            Resource: "arn:aws:s3:::*/*"
+
+  # EC2 ReadOnly Group
+  EC2ReadOnlyGroup:
     Type: AWS::IAM::Group
     Properties:
       GroupName: "EC2ReadOnlyGroup"
-  
-  EC2GroupPolicy:
+      Tags:
+        - Key: Purpose
+          Value: GitSyncLab
+
+  EC2ReadOnlyPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: "EC2ReadOnlyPolicy"
+      ManagedPolicyName: "EC2ReadOnlyAccess"
+      Description: "Provides read-only access to EC2 services"
       Groups:
-        - !Ref EC2Group
+        - !Ref EC2ReadOnlyGroup
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
-            Action: "ec2:Describe*"
+            Action:
+              - "ec2:Describe*"
+              - "ec2:Get*"
             Resource: "*"
-  
-  # s3-user
+
+  # IAM Users
   S3User:
     Type: AWS::IAM::User
     Properties:
       UserName: "s3-user"
-      Groups: [!Ref S3Group]
+      Groups:
+        - !Ref S3ReadOnlyGroup
       LoginProfile:
         Password: !Sub "{{resolve:secretsmanager:${OneTimePasswordSecret}::SecretString}}"
         PasswordResetRequired: true
-  
-  # ec2-user
+      Tags:
+        - Key: Purpose
+          Value: GitSyncLab
+
   EC2User:
     Type: AWS::IAM::User
     Properties:
       UserName: "ec2-user"
-      Groups: [!Ref EC2Group]
+      Groups:
+        - !Ref EC2ReadOnlyGroup
       LoginProfile:
         Password: !Sub "{{resolve:secretsmanager:${OneTimePasswordSecret}::SecretString}}"
         PasswordResetRequired: true
-template-file-path: iam-roger.yml
-parameters: {}
-tags: {}
+      Tags:
+        - Key: Purpose
+          Value: GitSyncLab
+
+Outputs:
+  OneTimePasswordSecretArn:
+    Description: "ARN of the one-time password secret"
+    Value: !Ref OneTimePasswordSecret
+  S3UserLoginLink:
+    Description: "Login link for S3 user"
+    Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
+  EC2UserLoginLink:
+    Description: "Login link for EC2 user"
+    Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
+  Instructions:
+    Description: "Instructions for lab completion"
+    Value: !Sub |
+      1. Retrieve the password from Secrets Manager: ${OneTimePasswordSecret}
+      2. Login using the provided links with usernames 's3-user' or 'ec2-user'
+      3. You will be prompted to change your password on first login
