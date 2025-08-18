@@ -4,7 +4,7 @@ Description: >
   a temporary password in AWS Secrets Manager, and two IAM users with console access assigned to these groups.
 
 Resources:
-  # --- 1. One-Time Password stored in Secrets Manager ---
+  # --- One-Time Password stored in Secrets Manager ---
   NewUserTempPasswordV2:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -24,16 +24,6 @@ Resources:
       GroupName: "S3-ReadOnly-Group-V2"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-      Policies:
-        - PolicyName: "AllowUsersToChangeOwnPassword"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "iam:ChangePassword"
-                  - "iam:GetAccountPasswordPolicy"
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:user/\${aws:username}"
 
   # --- 3. EC2 Group with read access to EC2 ---
   EC2UserGroupV2:
@@ -42,16 +32,6 @@ Resources:
       GroupName: "EC2-ReadOnly-Group-V2"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
-      Policies:
-        - PolicyName: "AllowUsersToChangeOwnPassword"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "iam:ChangePassword"
-                  - "iam:GetAccountPasswordPolicy"
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:user/\${aws:username}"
 
   # --- 4. IAM User for S3 Access ---
   S3UserV2:
@@ -91,7 +71,6 @@ Outputs:
   IAMLoginURLV2:
     Description: "The URL for IAM users (v2) to log in to the AWS Console."
     Value: !Sub "https://console.aws.amazon.com/console/home?region=${AWS::Region}"
-
   SecretARNV2:
     Description: "The ARN of the secret (v2) containing the temporary password."
     Value: !Ref NewUserTempPasswordV2
