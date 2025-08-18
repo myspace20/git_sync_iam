@@ -1,4 +1,3 @@
-template-file-path: ./services.yaml
-tags:
-Name: 'IAM LAB'
-Project: 'LAB AWS'
+template-file-path: services.yml
+parameters: {}
+tags: {}
