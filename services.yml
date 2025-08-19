@@ -1,14 +1,14 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  CloudFormation template that creates two IAM user groups (S3 Read-Only v2 and EC2 Read-Only v2),
+  CloudFormation template that creates two IAM user groups,
   a temporary password in AWS Secrets Manager, and two IAM users with console access assigned to these groups.
 
 Resources:
-  NewUserTempPasswordV2:
+  NewUserTempPassword:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Description: "Temporary password for new IAM users (v2)"
-      Name: "iam-user-temp-password-v2"
+      Description: "Temporary password for new IAM users"
+      Name: "temporary-password-iam"
       GenerateSecretString:
         SecretStringTemplate: "{}"
         GenerateStringKey: "password"
@@ -16,54 +16,54 @@ Resources:
         IncludeSpace: false
         RequireEachIncludedType: true
 
-  S3UserGroupV2:
+  S3UserGroup:
     Type: AWS::IAM::Group
     Properties:
-      GroupName: "S3-ReadOnly-Group-V2"
+      GroupName: "S3-ReadOnly-Group"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 
-  EC2UserGroupV2:
+  EC2UserGroup:
     Type: AWS::IAM::Group
     Properties:
-      GroupName: "EC2-ReadOnly-Group-V2"
+      GroupName: "EC2-ReadOnly-Group"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
 
-  S3UserV2:
+  S3User:
     Type: AWS::IAM::User
     Properties:
-      UserName: "roger_s3_v2"
+      UserName: "roger_s3"
       LoginProfile:
-        Password: !Sub "{{resolve:secretsmanager:iam-user-temp-password-v2:SecretString:password}}"
+        Password: !Sub "{{resolve:secretsmanager:temporary-password-iam:SecretString:password}}"
         PasswordResetRequired: true
 
-  EC2UserV2:
+  EC2User:
     Type: AWS::IAM::User
     Properties:
-      UserName: "roger_ec2_v2"
+      UserName: "roger_ec2"
       LoginProfile:
-        Password: !Sub "{{resolve:secretsmanager:iam-user-temp-password-v2:SecretString:password}}"
+        Password: !Sub "{{resolve:secretsmanager:temporary-password-iam:SecretString:password}}"
         PasswordResetRequired: true
 
-  S3UserToGroupAdditionV2:
+  S3UserToGroupAddition:
     Type: AWS::IAM::UserToGroupAddition
     Properties:
-      GroupName: !Ref S3UserGroupV2
+      GroupName: !Ref S3UserGroup
       Users:
-        - !Ref S3UserV2
+        - !Ref S3User
 
-  EC2UserToGroupAdditionV2:
+  EC2UserToGroupAddition:
     Type: AWS::IAM::UserToGroupAddition
     Properties:
-      GroupName: !Ref EC2UserGroupV2
+      GroupName: !Ref EC2UserGroup
       Users:
-        - !Ref EC2UserV2
+        - !Ref EC2User
 
 Outputs:
-  IAMLoginURLV2:
-    Description: "The URL for IAM users (v2) to log in to the AWS Console."
+  IAMLoginURL:
+    Description: "The URL for IAM users to log in to the AWS Console."
     Value: !Sub "https://console.aws.amazon.com/console/home?region=${AWS::Region}"
-  SecretARNV2:
-    Description: "The ARN of the secret (v2) containing the temporary password."
-    Value: !Ref NewUserTempPasswordV2
+  SecretARN:
+    Description: "The ARN of the secret containing the temporary password."
+    Value: !Ref NewUserTempPassword
