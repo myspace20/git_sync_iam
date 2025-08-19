@@ -15,6 +15,24 @@ Resources:
         PasswordLength: 20
         IncludeSpace: false
         RequireEachIncludedType: true
+        
+  PasswordChangePolicy:
+  Type: AWS::IAM::ManagedPolicy
+  Properties:
+    ManagedPolicyName: "AllowUsersToChangeOwnPassword"
+    PolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - "iam:ChangePassword"
+          Resource:
+            - !Sub "arn:aws:iam::*:user/\${aws:username}"
+            - !Sub "arn:aws:iam::*:user/*/\${aws:username}"
+        - Effect: Allow
+          Action:
+            - "iam:GetAccountPasswordPolicy"
+          Resource: "*"
 
   S3UserGroup:
     Type: AWS::IAM::Group
@@ -22,6 +40,7 @@ Resources:
       GroupName: "S3-ReadOnly-Group"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+        - !Ref PasswordChangePolicy
 
   EC2UserGroup:
     Type: AWS::IAM::Group
@@ -29,6 +48,7 @@ Resources:
       GroupName: "EC2-ReadOnly-Group"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
+        - !Ref PasswordChangePolicy
 
   S3User:
     Type: AWS::IAM::User
