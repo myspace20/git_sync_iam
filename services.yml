@@ -4,7 +4,6 @@ Description: >
   a temporary password in AWS Secrets Manager, and two IAM users with console access assigned to these groups.
 
 Resources:
-  # --- One-Time Password stored in Secrets Manager ---
   NewUserTempPasswordV2:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -17,7 +16,6 @@ Resources:
         IncludeSpace: false
         RequireEachIncludedType: true
 
-  # --- 2. S3 User Group with read access to S3 ---
   S3UserGroupV2:
     Type: AWS::IAM::Group
     Properties:
@@ -25,7 +23,6 @@ Resources:
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 
-  # --- 3. EC2 Group with read access to EC2 ---
   EC2UserGroupV2:
     Type: AWS::IAM::Group
     Properties:
@@ -33,7 +30,6 @@ Resources:
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
 
-  # --- 4. IAM User for S3 Access ---
   S3UserV2:
     Type: AWS::IAM::User
     Properties:
@@ -42,7 +38,6 @@ Resources:
         Password: !Sub "{{resolve:secretsmanager:iam-user-temp-password-v2:SecretString:password}}"
         PasswordResetRequired: true
 
-  # --- 5. IAM User for EC2 Access ---
   EC2UserV2:
     Type: AWS::IAM::User
     Properties:
@@ -51,7 +46,6 @@ Resources:
         Password: !Sub "{{resolve:secretsmanager:iam-user-temp-password-v2:SecretString:password}}"
         PasswordResetRequired: true
 
-  # --- 6. Assign s3-user to the S3 Group ---
   S3UserToGroupAdditionV2:
     Type: AWS::IAM::UserToGroupAddition
     Properties:
@@ -59,7 +53,6 @@ Resources:
       Users:
         - !Ref S3UserV2
 
-  # --- 7. Assign ec2-user to the EC2 Group ---
   EC2UserToGroupAdditionV2:
     Type: AWS::IAM::UserToGroupAddition
     Properties:
