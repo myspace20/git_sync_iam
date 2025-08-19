@@ -15,24 +15,24 @@ Resources:
         PasswordLength: 20
         IncludeSpace: false
         RequireEachIncludedType: true
-        
+
   PasswordChangePolicy:
-  Type: AWS::IAM::ManagedPolicy
-  Properties:
-    ManagedPolicyName: "AllowUsersToChangeOwnPassword"
-    PolicyDocument:
-      Version: "2012-10-17"
-      Statement:
-        - Effect: Allow
-          Action:
-            - "iam:ChangePassword"
-          Resource:
-            - !Sub "arn:aws:iam::*:user/\${aws:username}"
-            - !Sub "arn:aws:iam::*:user/*/\${aws:username}"
-        - Effect: Allow
-          Action:
-            - "iam:GetAccountPasswordPolicy"
-          Resource: "*"
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: "AllowUsersToChangeOwnPassword"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "iam:ChangePassword"
+            Resource:
+              - !Sub "arn:aws:iam::*:user/\${aws:username}"
+              - !Sub "arn:aws:iam::*:user/*/\${aws:username}"
+          - Effect: Allow
+            Action:
+              - "iam:GetAccountPasswordPolicy"
+            Resource: "*"
 
   S3UserGroup:
     Type: AWS::IAM::Group
@@ -55,7 +55,7 @@ Resources:
     Properties:
       UserName: "roger_s3"
       LoginProfile:
-        Password: !Sub "{{resolve:secretsmanager:temporary-password-iam:SecretString:password}}"
+        Password: "{{resolve:secretsmanager:temporary-password-iam:SecretString:password}}"
         PasswordResetRequired: true
 
   EC2User:
@@ -63,7 +63,7 @@ Resources:
     Properties:
       UserName: "roger_ec2"
       LoginProfile:
-        Password: !Sub "{{resolve:secretsmanager:temporary-password-iam:SecretString:password}}"
+        Password: "{{resolve:secretsmanager:temporary-password-iam:SecretString:password}}"
         PasswordResetRequired: true
 
   S3UserToGroupAddition:
@@ -83,7 +83,8 @@ Resources:
 Outputs:
   IAMLoginURL:
     Description: "The URL for IAM users to log in to the AWS Console."
-    Value: !Sub "https://console.aws.amazon.com/console/home?region=${AWS::Region}"
+    Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
+
   SecretARN:
     Description: "The ARN of the secret containing the temporary password."
     Value: !Ref NewUserTempPassword
