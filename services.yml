@@ -27,8 +27,8 @@ Resources:
             Action:
               - "iam:ChangePassword"
             Resource:
-              - !Sub "arn:aws:iam::*:user/\${aws:username}"
-              - !Sub "arn:aws:iam::*:user/*/\${aws:username}"
+              - !Sub 'arn:aws:iam::*:user/${aws:username}'
+              - !Sub 'arn:aws:iam::*:user/*/${aws:username}'
           - Effect: Allow
             Action:
               - "iam:GetAccountPasswordPolicy"
