@@ -48,6 +48,14 @@ Resources:
         Password: "{{resolve:secretsmanager:temporary-password-iam:SecretString:password}}"
         PasswordResetRequired: true
 
+  EC2User_Test:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: "roger_ec2_test"
+      LoginProfile:
+        Password: "{{resolve:secretsmanager:temporary-password-iam:SecretString:password}}"
+        PasswordResetRequired: true
+
   S3UserToGroupAddition:
     Type: AWS::IAM::UserToGroupAddition
     Properties:
